@@ -1,8 +1,8 @@
-## Signal_and_System___lecture_design
+# Signal_and_System___lecture_design
 This is a MATLAB code about digital communication link simulation.
 
 
-# Including:
+## Including:
 
 
 1. Rectangular pulse shaping versus Root Raised Cosine (RRC) pulse shaping
