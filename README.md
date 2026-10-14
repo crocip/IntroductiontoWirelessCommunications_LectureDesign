@@ -11,4 +11,3 @@ This is a MATLAB code about digital communication link simulation.
 4. Matched filtering, symbol sampling, constellation diagrams, and EVM analysis
 
 
-### The main branch hasn't been debug!!! The right version is in QWEN branch!
