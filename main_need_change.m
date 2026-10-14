@@ -38,6 +38,81 @@ hRRC = myRRC(beta, span, sps);
 % 可以画图比较矩形脉冲和根升余弦脉冲，观察区别，时域和频域的
 % ==========================================================
 
+figure;
+
+subplot(2,1,1);
+
+plot(hRect,'o-','LineWidth',1.1);
+
+xlabel('Sample');
+ylabel('Amplitude');
+
+title('矩形脉冲滤波器（时域）');
+
+grid on;
+
+
+subplot(2,1,2);
+
+plot(hRRC,'LineWidth',1.1);
+
+xlabel('Sample');
+ylabel('Amplitude');
+
+title('根升余弦脉冲滤波器（时域）');
+
+grid on;
+
+
+% 频域比较（零相位）
+
+Hrect = fftshift(fft(hRect,2048));
+
+Hrrc  = fftshift(fft(hRRC,2048));
+
+fAxis = (-1024:1023)/2048;   % 归一化频率（以采样率的一半为1）
+
+
+figure;
+
+subplot(2,1,1);
+
+plot(fAxis,20*log10(abs(Hrect)+eps),'LineWidth',1.1);
+
+hold on;
+
+plot(fAxis,20*log10(abs(Hrrc)+eps),'LineWidth',1.1);
+
+xlabel('Normalized Frequency');
+ylabel('|H(f)| (dB)');
+
+title('矩形脉冲与RRC脉冲幅度谱比较');
+
+legend('Rectangular','RRC');
+
+ylim([-60 5]);
+
+grid on;
+
+
+subplot(2,1,2);
+
+plot(fAxis,unwrap(angle(Hrect)),'LineWidth',1.1);
+
+hold on;
+
+plot(fAxis,unwrap(angle(Hrrc)),'LineWidth',1.1);
+
+xlabel('Normalized Frequency');
+ylabel('Phase (rad)');
+
+title('矩形脉冲与RRC脉冲相位谱比较');
+
+legend('Rectangular','RRC');
+
+grid on;
+
+
 %% =========================================================
 % 固定QPSK
 % 比较矩形脉冲与RRC脉冲的完整通信过程
@@ -50,65 +125,6 @@ NbitDemo = 20000;
 bitsDemo = randi([0 1],1,NbitDemo);
 
 EbN0Demo = 6;
-function out = runCommunication(bits, M, h, sps, EbN0)
-% -----------------------------------------------------
-% 基本数字通信仿真
-% -----------------------------------------------------
-
-% 比特 -> 符号
-if M == 2
-    symbols = 2 * bits - 1;     % 0 -> -1, 1 -> +1
-else
-    error('当前示例仅支持 M = 2');
-end
-
-% 上采样
-txUp = upsample(symbols, sps);
-
-% 脉冲成形
-txSignal = conv(txUp, h, 'same');
-
-% 计算信号功率
-signalPower = mean(txSignal.^2);
-
-% 根据 Eb/N0 添加 AWGN
-Eb = signalPower * sps;
-N0 = Eb / 10^(EbN0/10);
-noisePower = N0 / 2;
-
-noise = sqrt(noisePower) * randn(size(txSignal));
-
-% 接收信号
-rxSignal = txSignal + noise;
-
-% 匹配滤波
-rxFiltered = conv(rxSignal, h, 'same');
-
-% 在符号中心抽样
-sampleIndex = 1:sps:length(rxFiltered);
-rxSamples = rxFiltered(sampleIndex);
-
-% 判决
-rxBits = rxSamples >= 0;
-
-% 长度对齐
-N = min(length(bits), length(rxBits));
-bitsUsed = bits(1:N);
-rxBits = rxBits(1:N);
-
-% BER
-bitErrors = sum(bitsUsed ~= rxBits);
-BER = bitErrors / N;
-
-% 输出
-out.txSignal = txSignal;
-out.rxSignal = rxSignal;
-out.rxFiltered = rxFiltered;
-out.txBits = bitsUsed;
-out.rxBits = rxBits;
-out.BER = BER;
-out.bitErrors = bitErrors;
-end
 
 % ---------------------------------------------------------
 % 矩形脉冲系统
@@ -653,31 +669,9 @@ function h = myRRC(beta, span, sps)
 end
 
 
-%% =========================================================
-% 完整通信链路
-%
-% bit
-% ↓
-% M-QAM Gray映射
-% ↓
-% 上采样
-% ↓
-% 脉冲成形
-% ↓
-% AWGN
-% ↓
-% 匹配滤波
-% ↓
-% 定时抽样
-% ↓
-% QAM判决
-% ↓
-% bit
-% ↓
-% BER / EVM
-% ==========================================================
-
-% 需补充
+% =========================================================
+% 完整通信链路（M-QAM Gray映射 -> RRC成形 -> AWGN -> 匹配滤波 -> 抽样 -> 判决）
+% =========================================================
 
 function out = runCommunication( ...
     bits, M, hTx, sps, EbN0dB)
@@ -788,7 +782,7 @@ function out = runCommunication( ...
 
 
     %% ------------------------------------------------------
-    % BER，需补充
+    % BER：统计误比特数（代码已补充完整）
     % -------------------------------------------------------
 
     Nbit = min(length(bits),length(bitsHat));
@@ -923,7 +917,9 @@ function symbols = myQAMMod(bits,M)
     Q = Q(:);
 
 
-    %% QAM符号，需补充
+    %% QAM符号：I路为实部，Q路为虚部
+
+    symbols = I + 1j*Q;
 
 
     %% ------------------------------------------------------
@@ -947,7 +943,7 @@ end
 
 
 %% =========================================================
-% Gray编码方形M-QAM解调，需补充，
+% Gray编码方形M-QAM解调（代码已补充完整）
 % ==========================================================
 
 function bitsHat = myQAMDemod(symbols,M)
@@ -975,7 +971,7 @@ function bitsHat = myQAMDemod(symbols,M)
 
 
     %% ------------------------------------------------------
-    % 找距离最近的I/Q幅值，需补充
+    % 找距离最近的I/Q幅值（代码已补充完整）
     % -------------------------------------------------------
     %% 最近幅值判决
 
