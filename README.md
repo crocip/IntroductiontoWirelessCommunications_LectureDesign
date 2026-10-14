@@ -1,5 +1,6 @@
-# lecture_design
-This is a MATLAB code about digital communication link simulation. The right code is here in *.m file.
+# Introduction to Wireless Communications: lecture design
+This is a MATLAB code about digital communication link simulation.
+
 
 
 ## Including:
@@ -9,3 +10,5 @@ This is a MATLAB code about digital communication link simulation. The right cod
 2. The BER performance of QPSK, 16QAM, and 64QAM under an AWGN channel
 3. Gray-coded QAM modulation and demodulation
 4. Matched filtering, symbol sampling, constellation diagrams, and EVM analysis
+
+
