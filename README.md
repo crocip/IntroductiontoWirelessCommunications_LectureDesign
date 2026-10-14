@@ -1,5 +1,5 @@
 # Introduction to Wireless Communications: lecture design
-This is a MATLAB code about digital communication link simulation.
+This is a MATLAB code and report about digital communication link simulation.
 
 
 ## Function Including:
