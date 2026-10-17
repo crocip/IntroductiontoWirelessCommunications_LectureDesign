@@ -38,81 +38,6 @@ hRRC = myRRC(beta, span, sps);
 % 可以画图比较矩形脉冲和根升余弦脉冲，观察区别，时域和频域的
 % ==========================================================
 
-figure;
-
-subplot(2,1,1);
-
-plot(hRect,'o-','LineWidth',1.1);
-
-xlabel('Sample');
-ylabel('Amplitude');
-
-title('矩形脉冲滤波器（时域）');
-
-grid on;
-
-
-subplot(2,1,2);
-
-plot(hRRC,'LineWidth',1.1);
-
-xlabel('Sample');
-ylabel('Amplitude');
-
-title('根升余弦脉冲滤波器（时域）');
-
-grid on;
-
-
-% 频域比较（零相位）
-
-Hrect = fftshift(fft(hRect,2048));
-
-Hrrc  = fftshift(fft(hRRC,2048));
-
-fAxis = (-1024:1023)/2048;   % 归一化频率（以采样率的一半为1）
-
-
-figure;
-
-subplot(2,1,1);
-
-plot(fAxis,20*log10(abs(Hrect)+eps),'LineWidth',1.1);
-
-hold on;
-
-plot(fAxis,20*log10(abs(Hrrc)+eps),'LineWidth',1.1);
-
-xlabel('Normalized Frequency');
-ylabel('|H(f)| (dB)');
-
-title('矩形脉冲与RRC脉冲幅度谱比较');
-
-legend('Rectangular','RRC');
-
-ylim([-60 5]);
-
-grid on;
-
-
-subplot(2,1,2);
-
-plot(fAxis,unwrap(angle(Hrect)),'LineWidth',1.1);
-
-hold on;
-
-plot(fAxis,unwrap(angle(Hrrc)),'LineWidth',1.1);
-
-xlabel('Normalized Frequency');
-ylabel('Phase (rad)');
-
-title('矩形脉冲与RRC脉冲相位谱比较');
-
-legend('Rectangular','RRC');
-
-grid on;
-
-
 %% =========================================================
 % 固定QPSK
 % 比较矩形脉冲与RRC脉冲的完整通信过程
@@ -669,9 +594,31 @@ function h = myRRC(beta, span, sps)
 end
 
 
-% =========================================================
-% 完整通信链路（M-QAM Gray映射 -> RRC成形 -> AWGN -> 匹配滤波 -> 抽样 -> 判决）
-% =========================================================
+%% =========================================================
+% 完整通信链路
+%
+% bit
+% ↓
+% M-QAM Gray映射
+% ↓
+% 上采样
+% ↓
+% 脉冲成形
+% ↓
+% AWGN
+% ↓
+% 匹配滤波
+% ↓
+% 定时抽样
+% ↓
+% QAM判决
+% ↓
+% bit
+% ↓
+% BER / EVM
+% ==========================================================
+
+% 需补充
 
 function out = runCommunication( ...
     bits, M, hTx, sps, EbN0dB)
@@ -782,18 +729,9 @@ function out = runCommunication( ...
 
 
     %% ------------------------------------------------------
-    % BER：统计误比特数（代码已补充完整）
+    % BER，需补充
     % -------------------------------------------------------
 
-    Nbit = min(length(bits),length(bitsHat));
-
-    bitsUsed = bits(1:Nbit);
-
-    bitsHat = bitsHat(1:Nbit);
-
-    bitErrors = sum(bitsUsed ~= bitsHat);
-
-    BER = bitErrors/Nbit;
 
     %% ------------------------------------------------------
     % EVM
@@ -917,9 +855,7 @@ function symbols = myQAMMod(bits,M)
     Q = Q(:);
 
 
-    %% QAM符号：I路为实部，Q路为虚部
-
-    symbols = I + 1j*Q;
+    %% QAM符号，需补充
 
 
     %% ------------------------------------------------------
@@ -943,7 +879,7 @@ end
 
 
 %% =========================================================
-% Gray编码方形M-QAM解调（代码已补充完整）
+% Gray编码方形M-QAM解调，需补充，
 % ==========================================================
 
 function bitsHat = myQAMDemod(symbols,M)
@@ -971,31 +907,9 @@ function bitsHat = myQAMDemod(symbols,M)
 
 
     %% ------------------------------------------------------
-    % 找距离最近的I/Q幅值（代码已补充完整）
+    % 找距离最近的I/Q幅值，需补充
     % -------------------------------------------------------
-    %% 最近幅值判决
 
-    Ivalue = real(symbols);
-
-    Qvalue = imag(symbols);
-
-
-    indexI = zeros(length(symbols),1);
-
-    indexQ = zeros(length(symbols),1);
-
-
-
-    for ii = 1:length(symbols)
-
-        [~,indexI(ii)] = ...
-            min(abs(Ivalue(ii)-levels));
-
-
-        [~,indexQ(ii)] = ...
-            min(abs(Qvalue(ii)-levels));
-
-    end
 
     %% 索引对应的是Gray码整数
 
