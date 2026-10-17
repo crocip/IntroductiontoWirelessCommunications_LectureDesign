@@ -1071,3 +1071,169 @@ function binary = gray2binary(gray)
     end
 
 end
+
+
+%% =========================================================
+% 【扩展部分一】图3-4：RRC级联升余弦频谱（验证零ISI准则）
+% 发送RRC + 接收匹配RRC 级联 = 升余弦(RC)响应，
+% 在符号间隔上满足Nyquist第一准则（抽样点无ISI）。
+% ==========================================================
+
+figure;
+
+subplot(2,1,1);
+
+% 发送RRC与接收匹配RRC级联 = 升余弦(RC)组合响应（时域卷积）
+
+gRC = conv(hRRC, conj(fliplr(hRRC)));          % RRC x RRC = RC 组合响应
+GRC   = fftshift(fft(gRC,2048));
+
+plot(fAxis, 20*log10(abs(GRC)+eps), 'LineWidth',1.2); hold on;
+% 叠加理想升余弦谱作参照
+omega  = abs(fAxis).*sps;  % 以符号率Rs为单位的归一化频率
+rcIdeal = zeros(size(omega));
+inFlat  = omega <= 1-beta;
+inRoll  = (omega > 1-beta) & (omega <= 1+beta);
+rcIdeal(inFlat) = 1;
+rcIdeal(inRoll) = 0.5*(1+cos(pi*(omega(inRoll)-(1-beta))/(2*beta)));
+plot(fAxis, 20*log10(rcIdeal+eps), '--', 'LineWidth',1.2);
+xlabel('Normalized Frequency'); ylabel('|H_{RC}(f)| (dB)');
+title(['级联升余弦频谱与理想RC对比（\beta=',num2str(beta),'）']);
+legend('RRC级联实际谱','理想升余弦谱'); xlim([-0.5 0.5]); ylim([-60 3]); grid on;
+
+subplot(2,1,2);
+% 时域：组合冲激响应在整数符号间隔处抽样 -> 除中心点外均为0（无ISI）
+peakIdx = (length(gRC)+1)/2;                          % gRC长度必为奇数，峰值居中
+idxT = (-3*span*sps : 3*span*sps) + peakIdx;     % 以峰值为中心的对称索引
+idxT = idxT(idxT>=1 & idxT<=length(gRC));
+stem((idxT - peakIdx)/sps, real(gRC(idxT))/max(gRC), 'filled');
+xlabel('t/T_s'); ylabel('g(t)');
+title('级联RC冲激响应的符号间隔抽样（非中心抽样点≈0，即无ISI）');
+grid on;
+
+
+%% =========================================================
+% 【扩展部分二】图3-5：矩形脉冲与RRC成形后发送信号的功率谱(PSD)
+% 用Welch法估计，直观展示带外抑制差异（旁瓣泄漏 vs 快速滚降）。
+% ==========================================================
+
+Npsd  = 40000;                       % 更多符号使谱更平滑
+bitsPsd = randi([0 1],1,Npsd*2);     % QPSK: 2 bit/sym
+
+outRectPsd = runCommunication(bitsPsd, 4, hRect, sps, 30);  % 高Eb/N0近似无噪波形
+outRrcPsd  = runCommunication(bitsPsd, 4, hRRC,  sps, 30);
+
+figure;
+
+[Prx,frx] = periodogram(real(outRectPsd.txWave), [], 4096, sps, 'centered');
+[Psx,fsx] = periodogram(real(outRrcPsd.txWave),  [], 4096, sps, 'centered');
+
+% 转成相对谱（dB），便于与滤波器幅度谱对照：0 dB = 带内峰值
+PrxdB = 10*log10(Prx+eps); PrxdB = PrxdB - max(PrxdB);
+Psxdb = 10*log10(Psx+eps); Psxdb = Psxdb - max(Psxdb);
+
+plot(frx, PrxdB, 'LineWidth',1.1); hold on;
+plot(fsx, Psxdb, 'LineWidth',1.1);
+xlabel('Frequency (以符号率Rs为单位)'); ylabel('归一化PSD (dB)');
+title('矩形脉冲与RRC成形后发送信号功率谱密度比较');
+legend('矩形脉冲','RRC脉冲');
+xlim([-2 2]); ylim([-60 3]); grid on;
+
+
+%% =========================================================
+% 【扩展部分三】图3-9：不同滚降系数 \beta 的RRC滤波器频谱对比
+% 说明：\beta 决定已调信号带宽 B = (1+\beta)Rs/2，
+%       \beta 越大 -> 频谱滚降越缓、占用带宽越大、时域拖尾越短。
+% ==========================================================
+
+betaList = [0.2 0.5 1.0];
+colors   = lines(numel(betaList));
+
+figure;
+
+subplot(1,2,1);
+for ib = 1:numel(betaList)
+    hb = myRRC(betaList(ib), span, sps);
+    Hb = fftshift(fft(hb,2048));
+    plot(fAxis, 20*log10(abs(Hb)+eps), 'Color', colors(ib,:), 'LineWidth',1.2);
+    hold on;
+end
+xlabel('Normalized Frequency'); ylabel('|H(f)| (dB)');
+title('不同\beta的RRC幅度谱');
+legend(arrayfun(@(b) sprintf('\\beta=%.1f',b), betaList,'UniformOutput',false));
+xlim([-0.6 0.6]); ylim([-60 5]); grid on;
+
+subplot(1,2,2);
+for ib = 1:numel(betaList)
+    hb = myRRC(betaList(ib), span, sps);
+    gb = conv(hb, conj(fliplr(hb)));         % 级联RC谱
+    Gb = fftshift(fft(gb,2048));
+    plot(fAxis, 20*log10(abs(Gb)+eps), 'Color', colors(ib,:), 'LineWidth',1.2);
+    hold on;
+end
+xline(-0.5*(1+betaList(1))/sps,'k--'); xline(0.5*(1+betaList(1))/sps,'k--');
+xline(-0.5*(1+betaList(2))/sps,'k-.'); xline(0.5*(1+betaList(2))/sps,'k-.');
+xline(-0.5*(1+betaList(3))/sps,'k:');  xline(0.5*(1+betaList(3))/sps,'k:');
+xlabel('Normalized Frequency'); ylabel('|H_{RC}(f)| (dB)');
+title('不同\beta的级联升余弦谱与带宽边界');
+legend(arrayfun(@(b) sprintf('\\beta=%.1f',b), betaList,'UniformOutput',false), ...
+       'Location','southwest');
+xlim([-0.6 0.6]); ylim([-60 3]); grid on;
+
+
+%% =========================================================
+% 【扩展部分四】图3-10：不同滚降系数 \beta 下的BER曲线
+% 结论：理想同步+匹配滤波下，BER与\beta基本无关（统计涨落范围内），
+%       \beta只折中"带宽"与"实现复杂度/定时敏感度"。
+% ==========================================================
+
+EbN0ListBeta = 0:2:10;
+BER_beta = zeros(numel(betaList), numel(EbN0ListBeta));
+NbitBeta = 120000;
+bitsBeta = randi([0 1],1,NbitBeta);
+
+for ib = 1:numel(betaList)
+    hb = myRRC(betaList(ib), span, sps);
+    for ii = 1:numel(EbN0ListBeta)
+        rTemp = runCommunication(bitsBeta, 4, hb, sps, EbN0ListBeta(ii));
+        BER_beta(ib,ii) = rTemp.ber;
+    end
+    fprintf('\beta=%.1f 完成\n', betaList(ib));
+end
+
+figure;
+semilogy(EbN0ListBeta, BER_beta(1,:), 'o-', 'LineWidth',1.2); hold on;
+semilogy(EbN0ListBeta, BER_beta(2,:), 's-', 'LineWidth',1.2);
+semilogy(EbN0ListBeta, BER_beta(3,:), '^-', 'LineWidth',1.2);
+semilogy(EbN0ListBeta, 0.5*erfc(sqrt(10.^(EbN0ListBeta/10))), '--', 'LineWidth',1.2);
+xlabel('E_b/N_0 (dB)'); ylabel('BER');
+title('不同滚降系数\beta下的QPSK BER性能');
+legend('\beta=0.2','\beta=0.5','\beta=1.0','QPSK理论', 'Location','southwest');
+grid on;
+
+fprintf('\n===========================================\n');
+fprintf('不同beta的BER (QPSK)\n');
+fprintf('Eb/N0(dB)   beta=0.2      beta=0.5      beta=1.0\n');
+for ii = 1:numel(EbN0ListBeta)
+    fprintf('%5.1f     %10.3e    %10.3e    %10.3e\n', ...
+        EbN0ListBeta(ii), BER_beta(1,ii), BER_beta(2,ii), BER_beta(3,ii));
+end
+fprintf('===========================================\n');
+
+
+%% =========================================================
+% 表格导出：矩形脉冲 vs RRC 的 QPSK BER 对比表
+% 【插入位置】"矩形脉冲和RRC在AWGN下的BER比较"一节的末尾，
+%   即该节最后一条语句 grid on; 之后、下一节 %% 之前。
+% 【注意】不要插到脚本开头！EbN0ListPulse/BERrect/BERrrc/
+%   BERtheory 这些变量只在上面那段 for 循环跑完之后才存在。
+% ==========================================================
+
+% --- 1) 命令行打印（可直接复制进 Word 表格）---
+fprintf('\n===== QPSK BER: Rect vs RRC vs Theory =====\n');
+fprintf('%-12s %-18s %-18s %-18s\n', ...
+    'Eb/N0 (dB)', 'Rect sim BER', 'RRC sim BER', 'QPSK theory BER');
+for ii = 1:length(EbN0ListPulse)
+    fprintf('%-12g %-18.3e %-18.3e %-18.3e\n', ...
+        EbN0ListPulse(ii), BERrect(ii), BERrrc(ii), BERtheory(ii));
+end
